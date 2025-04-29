@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimativa de Pi por Monte Carlo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f5f2;
+            color: #3a3238;
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 1rem;
+            gap: 8px;
+        }
+        
+        label {
+            font-size: 1rem;
+            color: #3a3238;
+            margin-bottom: 4px;
+        }
+        
+        .input-button-row {
+            display: flex;
+            gap: 8px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #d1b6ab;
+            border-radius: 8px;
+            background-color: white;
+            color: #3a3238;
+            font-size: 1rem;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #d1b6ab;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #a58f86;
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: 350px;
+            margin-bottom: 1rem;
+        }
+        
+        canvas {
+            width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .reset-btn {
+            position: static;
+            margin: 10px auto;
+            width: 40px;
+            height: 40px;
+            background-color: #d1b6ab;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .reset-icon {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+        
+        .copyright {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #a58f86;
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Distribuição aleatória</h1>
+    
+    <div class="controls">
+        <label for="pointCount">Número de pontos:</label>
+        <div class="input-button-row">
+            <input type="number" id="pointCount" min="1" max="10000" value="1" placeholder="Número de pontos">
+            <button id="plotButton">Plotar</button>
+        </div>
+    </div>
+    
+    <div class="canvas-container">
+        <canvas id="simulationCanvas"></canvas>
+    </div>
+    
+    <div class="reset-btn" id="resetButton">
+        <svg class="reset-icon" viewBox="0 0 24 24">
+            <path d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
+        </svg>
+    </div>
+    
+    <div class="copyright">
+        &copy; 2025 Rodrigo Pereira
+    </div>
+    
+    <script>
+        // Elementos DOM
+        const canvas = document.getElementById('simulationCanvas');
+        const ctx = canvas.getContext('2d');
+        const pointCountInput = document.getElementById('pointCount');
+        const plotButton = document.getElementById('plotButton');
+        const resetButton = document.getElementById('resetButton');
+        
+        // Configuração inicial
+        let size;
+        let radius;
+        let points = [];
+        let insideCount = 0;
+        
+        // Função para redimensionar o canvas
+        function resizeCanvas() {
+            // Define o tamanho do canvas como quadrado
+            size = Math.min(canvas.parentElement.clientWidth, window.innerHeight * 0.6);
+            canvas.width = size;
+            canvas.height = size;
+            radius = size / 2;
+            
+            // Redesenha tudo
+            if (points.length > 0) {
+                drawScene();
+                plotPoints();
+            } else {
+                drawScene();
+            }
+        }
+        
+        // Função para desenhar o quadrado e o círculo
+        function drawScene() {
+            // Limpa o canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Desenha o quadrado
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, size, size);
+            ctx.strokeStyle = '#a58f86';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, 0, size, size);
+            
+            // Desenha o círculo
+            ctx.beginPath();
+            ctx.arc(radius, radius, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = '#a58f86';
+            ctx.stroke();
+        }
+        
+        // Função para gerar pontos aleatórios
+        function generatePoints(count) {
+            points = [];
+            insideCount = 0;
+            
+            for (let i = 0; i < count; i++) {
+                const x = Math.random() * size;
+                const y = Math.random() * size;
+                
+                // Verifica se o ponto está dentro do círculo
+                const distanceFromCenter = Math.sqrt(Math.pow(x - radius, 2) + Math.pow(y - radius, 2));
+                const isInside = distanceFromCenter <= radius;
+                
+                if (isInside) {
+                    insideCount++;
+                }
+                
+                points.push({x, y, isInside});
+            }
+        }
+        
+        // Função para plotar os pontos
+        function plotPoints() {
+            for (const point of points) {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = point.isInside ? '#6b95ff' : '#ff6b6b';
+                ctx.fill();
+            }
+        }
+        
+        // Função para iniciar a simulação
+        function startSimulation() {
+            const count = parseInt(pointCountInput.value) || 100;
+            pointCountInput.value = count; // Atualiza o input para o valor processado
+            
+            drawScene();
+            generatePoints(count);
+            plotPoints();
+        }
+        
+        // Função para reiniciar a simulação
+        function resetSimulation() {
+            points = [];
+            insideCount = 0;
+            
+            drawScene();
+        }
+        
+        // Event listeners
+        plotButton.addEventListener('click', startSimulation);
+        resetButton.addEventListener('click', resetSimulation);
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Inicialização
+        resizeCanvas();
+    </script>
+</body>
+</html>
